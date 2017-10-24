@@ -3734,14 +3734,14 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                         child_val = gen_const_val(g, const_val->data.x_maybe);
                         maybe_val = LLVMConstAllOnes(LLVMInt1Type());
                     } else {
-                        child_val = LLVMConstNull(child_type->type_ref);
+                        child_val = LLVMGetUndef(child_type->type_ref);
                         maybe_val = LLVMConstNull(LLVMInt1Type());
                     }
                     LLVMValueRef fields[] = {
                         child_val,
                         maybe_val,
                     };
-                    return LLVMConstStruct(fields, 2, false);
+                    return LLVMConstNamedStruct(type_entry->type_ref, fields, 2);
                 }
             }
         case TypeTableEntryIdStruct:
@@ -3797,8 +3797,7 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                         fields[type_struct_field->gen_index] = gen_const_val(g, &const_val->data.x_struct.fields[i]);
                     }
                 }
-                return LLVMConstStruct(fields, type_entry->data.structure.gen_field_count,
-                    type_entry->data.structure.layout == ContainerLayoutPacked);
+                return LLVMConstNamedStruct(type_entry->type_ref, fields, type_entry->data.structure.gen_field_count);
             }
         case TypeTableEntryIdUnion:
             {
@@ -3812,11 +3811,12 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                 }
 
                 LLVMValueRef *values = allocate<LLVMValueRef>(len);
+                LLVMTypeRef element_type_ref = type_entry->data.array.child_type->type_ref;
                 for (uint64_t i = 0; i < len; i += 1) {
                     ConstExprValue *elem_value = &const_val->data.x_array.s_none.elements[i];
                     values[i] = gen_const_val(g, elem_value);
                 }
-                return LLVMConstArray(LLVMTypeOf(values[0]), values, (unsigned)len);
+                return LLVMConstArray(element_type_ref, values, (unsigned)len);
             }
         case TypeTableEntryIdEnum:
             {
@@ -3830,11 +3830,9 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                     assert(enum_field->value == const_val->data.x_enum.tag);
                     LLVMValueRef union_value;
                     if (type_has_bits(enum_field->type_entry)) {
-                        uint64_t union_type_bytes = LLVMStoreSizeOfType(g->target_data_ref,
-                                union_type_ref);
                         uint64_t field_type_bytes = LLVMStoreSizeOfType(g->target_data_ref,
                                 enum_field->type_entry->type_ref);
-                        uint64_t pad_bytes = union_type_bytes - field_type_bytes;
+                        uint64_t pad_bytes = type_entry->data.enumeration.union_size_bytes - field_type_bytes;
 
                         LLVMValueRef correctly_typed_value = gen_const_val(g, const_val->data.x_enum.payload);
                         if (pad_bytes == 0) {
@@ -3852,7 +3850,7 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                     LLVMValueRef fields[2];
                     fields[type_entry->data.enumeration.gen_tag_index] = tag_value;
                     fields[type_entry->data.enumeration.gen_union_index] = union_value;
-                    return LLVMConstStruct(fields, 2, false);
+                    return LLVMConstNamedStruct(type_entry->type_ref, fields, 2);
                 }
             }
         case TypeTableEntryIdFn:
@@ -3947,7 +3945,7 @@ static LLVMValueRef gen_const_val(CodeGen *g, ConstExprValue *const_val) {
                         err_tag_value,
                         err_payload_value,
                     };
-                    return LLVMConstStruct(fields, 2, false);
+                    return LLVMConstNamedStruct(type_entry->type_ref, fields, 2);
                 }
             }
         case TypeTableEntryIdVoid:

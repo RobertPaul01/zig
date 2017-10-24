@@ -1008,6 +1008,8 @@ struct TypeTableEntryEnum {
 
     size_t gen_union_index;
     size_t gen_tag_index;
+
+    uint32_t union_size_bytes;
 };
 
 struct TypeTableEntryEnumTag {

@@ -1344,6 +1344,7 @@ static void resolve_enum_type(CodeGen *g, TypeTableEntry *enum_type) {
     // unset temporary flag
     enum_type->data.enumeration.embedded_in_current = false;
     enum_type->data.enumeration.complete = true;
+    enum_type->data.enumeration.union_size_bytes = biggest_size_in_bits / 8;
 
     if (!enum_type->data.enumeration.is_invalid) {
         TypeTableEntry *tag_int_type = get_smallest_unsigned_int_type(g, field_count);
